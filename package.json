@@ -1,10 +1,10 @@
 {
-  "name": "@awesim/use-shadow-state",
+  "name": "@awesim/react-hooks",
   "version": "0.0.1",
-  "description": "React hook to create a shadow state that can be mutated independently from the parent state and synced or reverted when required",
+  "description": "A collection of useful react hooks for real-world scenarios",
   "author": "Asim Sohail",
   "license": "Apache-2.0",
-  "repository": "awe-sim/use-shadow-state",
+  "repository": "awe-sim/react-hooks",
   "main": "dist/index.js",
   "engines": {
     "node": ">=8",

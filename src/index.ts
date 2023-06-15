@@ -1,1 +1,2 @@
-export { useShadowState } from './hooks/useShadowState';
+export { useTimedAction } from './hooks/useSetTimeout/useSetTimeout';
+export { useShadowState } from './hooks/useShadowState/useShadowState';

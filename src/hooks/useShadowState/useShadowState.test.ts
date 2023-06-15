@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-hooks';
 import { useState } from 'react';
-import { useShadowState } from '..';
+import { useShadowState } from './useShadowState';
 
 function makeShadowHook<T>(initialValue: T, id: string) {
   const { result } = renderHook(() => {
