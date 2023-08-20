@@ -41,7 +41,6 @@ module.exports = {
     'no-shadow': 'warn', // When a variable name is being shadowed, eg function test(name: string) { const name = '' }
     'no-unreachable': 'warn', // Dead code after function return
     'no-unsafe-optional-chaining': 'warn', // When ?. is used needlessly
-    'no-unused-vars': 'warn', // When variables are declared but unused
     'no-useless-computed-key': 'warn', // When using useless computed keys, eg { ['id']: 123 } => { id: 123 }
     'no-useless-concat': 'warn', // When useless string concatenation is used, eg 'a' + 'b' => 'ab'
     'no-useless-rename': 'warn', // When object property is renamed to itself, eg { name: name }
@@ -53,10 +52,11 @@ module.exports = {
     'quote-props': ['warn', 'as-needed'], // Enforce either all object key to have (or not) quotes
     'require-await': 'warn', // When async functions do not 'await'
     'use-isnan': 'warn', // When isNaN is not used to check for NaN
-
+    
     // OK
     'no-prototype-builtins': 'off', // Allow Object.hasOwnProperty()
-    'no-undef': 'off' // Allow undeclared variables, eg. React.FC
+    'no-undef': 'off', // Allow undeclared variables, eg. React.FC
+    'no-unused-vars': 'off', // Allow variables are declared but unused
   },
   settings: {
     react: {

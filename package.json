@@ -40,7 +40,7 @@
     "react-dom": ">= 16.8.0"
   },
   "devDependencies": {
-    "@testing-library/react-hooks": "^3.4.1",
+    "@testing-library/react-hooks": "^7.0.2",
     "@types/jest": "^26.0.7",
     "@types/react": "^16.3.13",
     "@types/react-dom": "^16.0.5",
@@ -75,6 +75,7 @@
     "npm"
   ],
   "dependencies": {
+    "immer": "^10.0.2",
     "prop-types": "^15.7.2"
   }
 }

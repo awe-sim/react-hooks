@@ -1,319 +1,422 @@
 import { renderHook } from '@testing-library/react-hooks';
 import { act } from 'react-dom/test-utils';
-import { FnAction, useTimedAction } from './useSetTimeout';
+import { useSetTimeout } from './useSetTimeout';
+import { sleep } from '../../utils/sleep/sleep';
 
-function makeHook1(callback: FnAction, delay: number, skipIfAlreadyEnqueued: boolean, id: string) {
-  return renderHook(() => useTimedAction({ callback, delay, skipIfAlreadyEnqueued }, id));
+function makeHook1(callback: () => void, delay: number, skipIfAlreadyEnqueued: boolean, id: string) {
+  return renderHook(() => useSetTimeout(callback, delay, skipIfAlreadyEnqueued, id));
 }
 function makeHook2(id: string) {
-  return renderHook(() => useTimedAction({}, id));
-}
-
-function waitFor(delay: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(() => resolve(), delay);
-  });
+  return renderHook(() => useSetTimeout(undefined, undefined, undefined, id));
 }
 
 describe('useTimedAction | V1 (skip)', () => {
   it('initialization', () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, true, '1a');
+    const { result } = makeHook1(callback, 50, true, 'A');
 
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).not.toHaveBeenCalled();
     expect(result.current.cancel()).toBeFalsy();
   });
 
   it('enqueue once', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, true, '1b');
+    const { result } = makeHook1(callback, 50, true, 'B');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
-    const promise = act(() => result.current.enqueue({}));
-    expect(result.current.isEnqueued()).toBeTruthy();
+    const promise = act(() => result.current.schedule());
+    expect(result.current.isScheduled()).toBeTruthy();
     expect(callback).toHaveBeenCalledTimes(0);
 
     await promise;
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(1);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('cancel', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, true, '1c');
+    const { result } = makeHook1(callback, 50, true, 'C');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     const promise = act(() => {
-      const _promise = result.current.enqueue({});
-      expect(result.current.isEnqueued()).toBeTruthy();
+      const _promise = result.current.schedule();
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
       result.current.cancel();
       return _promise;
     });
 
     await expect(promise).rejects.toEqual(undefined);
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(0);
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, true, '1d');
+    const { result } = makeHook1(callback, 50, true, 'D');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      const promise1 = result.current.enqueue({});
-      const promise2 = result.current.enqueue({});
-      const promise3 = result.current.enqueue({});
+      const promise1 = result.current.schedule();
+      const promise2 = result.current.schedule();
+      const promise3 = result.current.schedule();
       expect(promise1).toBe(promise2);
       expect(promise1).toBe(promise3);
-      expect(result.current.isEnqueued()).toBeTruthy();
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
 
       await Promise.all([promise1, promise2, promise3]);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly timing', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, true, '1e');
+    const { result } = makeHook1(callback, 50, true, 'E');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      result.current.enqueue({});
-      await waitFor(30);
-      result.current.enqueue({});
-      await waitFor(30);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      result.current.schedule();
+      await sleep(30);
+      result.current.schedule();
+      await sleep(30);
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
-      await waitFor(50);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      await sleep(50);
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 });
 
 describe('useTimedAction | V1 (no skip)', () => {
   it('initialization', () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, false, '2a');
-    expect(result.current.isEnqueued()).toBeFalsy();
+    const { result } = makeHook1(callback, 50, false, 'F');
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).not.toHaveBeenCalled();
     expect(result.current.cancel()).toBeFalsy();
   });
 
   it('enqueue once', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, false, '2b');
+    const { result } = makeHook1(callback, 50, false, 'G');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
-    const promise = act(() => result.current.enqueue({}));
-    expect(result.current.isEnqueued()).toBeTruthy();
+    const promise = act(() => result.current.schedule());
+    expect(result.current.isScheduled()).toBeTruthy();
     expect(callback).toHaveBeenCalledTimes(0);
 
     await promise;
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(1);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('cancel', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, false, '2c');
+    const { result } = makeHook1(callback, 50, false, 'H');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     const promise = act(() => {
-      const _promise = result.current.enqueue({});
-      expect(result.current.isEnqueued()).toBeTruthy();
+      const _promise = result.current.schedule();
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
       result.current.cancel();
       return _promise;
     });
 
     await expect(promise).rejects.toEqual(undefined);
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(0);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, false, '2d');
+    const { result } = makeHook1(callback, 50, false, 'I');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      const promise1 = result.current.enqueue({});
-      const promise2 = result.current.enqueue({});
-      const promise3 = result.current.enqueue({});
+      const promise1 = result.current.schedule();
+      const promise2 = result.current.schedule();
+      const promise3 = result.current.schedule();
       expect(promise1).toBe(promise2);
       expect(promise1).toBe(promise3);
-      expect(result.current.isEnqueued()).toBeTruthy();
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
 
       await Promise.all([promise1, promise2, promise3]);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly timing', async () => {
     const callback = jest.fn();
-    const { result } = makeHook1(callback, 50, false, '2e');
+    const { result } = makeHook1(callback, 50, false, 'J');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      result.current.enqueue({});
-      await waitFor(30);
-      result.current.enqueue({});
-      await waitFor(30);
-      result.current.enqueue({});
-      await waitFor(30);
-      result.current.enqueue({});
-      await waitFor(30);
-      expect(result.current.isEnqueued()).toBeTruthy();
+      result.current.schedule();
+      await sleep(30);
+      result.current.schedule();
+      await sleep(30);
+      result.current.schedule();
+      await sleep(30);
+      result.current.schedule();
+      await sleep(30);
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
-      await waitFor(50);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      await sleep(50);
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 });
 
 describe('useTimedAction | V2 (skip)', () => {
   it('initialization', () => {
-    const { result } = makeHook2('3a');
+    const { result } = makeHook2('K');
 
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(result.current.cancel()).toBeFalsy();
   });
 
   it('enqueue once', async () => {
     const callback = jest.fn();
-    const { result } = makeHook2('3b');
+    const { result } = makeHook2('L');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
-    const promise = act(() => result.current.enqueue({ callback, delay: 50, skipIfAlreadyEnqueued: true }));
-    expect(result.current.isEnqueued()).toBeTruthy();
+    const promise = act(() => result.current.schedule(callback, 50, true));
+    expect(result.current.isScheduled()).toBeTruthy();
     expect(callback).toHaveBeenCalledTimes(0);
 
     await promise;
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(1);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('cancel', async () => {
     const callback = jest.fn();
-    const { result } = makeHook2('3c');
+    const { result } = makeHook2('M');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     const promise = act(() => {
-      const _promise = result.current.enqueue({ callback, delay: 50, skipIfAlreadyEnqueued: true });
-      expect(result.current.isEnqueued()).toBeTruthy();
+      const _promise = result.current.schedule(callback, 50, true);
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
       result.current.cancel();
       return _promise;
     });
 
     await expect(promise).rejects.toEqual(undefined);
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(0);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly', async () => {
     const callback1 = jest.fn();
     const callback2 = jest.fn();
     const callback3 = jest.fn();
-    const { result } = makeHook2('3d');
+    const { result } = makeHook2('N');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      const promise1 = result.current.enqueue({ callback: callback1, delay: 50, skipIfAlreadyEnqueued: true });
-      const promise2 = result.current.enqueue({ callback: callback2, delay: 50, skipIfAlreadyEnqueued: true });
-      const promise3 = result.current.enqueue({ callback: callback3, delay: 50, skipIfAlreadyEnqueued: true });
+      const promise1 = result.current.schedule(callback1, 50, true);
+      const promise2 = result.current.schedule(callback2, 50, true);
+      const promise3 = result.current.schedule(callback3, 50, true);
       expect(promise1).toBe(promise2);
       expect(promise1).toBe(promise3);
-      expect(result.current.isEnqueued()).toBeTruthy();
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback1).toHaveBeenCalledTimes(0);
       expect(callback2).toHaveBeenCalledTimes(0);
       expect(callback3).toHaveBeenCalledTimes(0);
 
       await Promise.all([promise1, promise2, promise3]);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).toHaveBeenCalledTimes(0);
       expect(callback3).toHaveBeenCalledTimes(0);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly timing', async () => {
     const callback = jest.fn();
-    const { result } = makeHook2('3e');
+    const { result } = makeHook2('O');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      result.current.enqueue({ callback, delay: 50, skipIfAlreadyEnqueued: true });
-      await waitFor(30);
-      result.current.enqueue({ callback, delay: 50, skipIfAlreadyEnqueued: true });
-      await waitFor(30);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      result.current.schedule(callback, 50, true);
+      await sleep(30);
+      result.current.schedule(callback, 50, true);
+      await sleep(30);
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
-      await waitFor(50);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      await sleep(50);
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 });
 
 describe('useTimedAction | V2 (no skip)', () => {
   it('initialization', () => {
-    const { result } = makeHook2('4a');
+    const { result } = makeHook2('P');
 
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(result.current.cancel()).toBeFalsy();
   });
 
   it('enqueue once', async () => {
     const callback = jest.fn();
-    const { result } = makeHook2('4b');
+    const { result } = makeHook2('Q');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
-    const promise = act(() => result.current.enqueue({ callback, delay: 50, skipIfAlreadyEnqueued: false }));
-    expect(result.current.isEnqueued()).toBeTruthy();
+    const promise = act(() => result.current.schedule(callback, 50, false));
+    expect(result.current.isScheduled()).toBeTruthy();
     expect(callback).toHaveBeenCalledTimes(0);
 
     await promise;
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(1);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('cancel', async () => {
     const callback = jest.fn();
-    const { result } = makeHook2('4c');
+    const { result } = makeHook2('R');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     const promise = act(() => {
-      const _promise = result.current.enqueue({ callback, delay: 50, skipIfAlreadyEnqueued: false });
-      expect(result.current.isEnqueued()).toBeTruthy();
+      const _promise = result.current.schedule(callback, 50, false);
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback).toHaveBeenCalledTimes(0);
       result.current.cancel();
       return _promise;
     });
 
     await expect(promise).rejects.toEqual(undefined);
-    expect(result.current.isEnqueued()).toBeFalsy();
+    expect(result.current.isScheduled()).toBeFalsy();
     expect(callback).toHaveBeenCalledTimes(0);
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly', async () => {
     const callback1 = jest.fn();
     const callback2 = jest.fn();
     const callback3 = jest.fn();
-    const { result } = makeHook2('4d');
+    const { result } = makeHook2('S');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      const promise1 = result.current.enqueue({ callback: callback1, delay: 50, skipIfAlreadyEnqueued: false });
-      const promise2 = result.current.enqueue({ callback: callback2, delay: 50, skipIfAlreadyEnqueued: false });
-      const promise3 = result.current.enqueue({ callback: callback3, delay: 50, skipIfAlreadyEnqueued: false });
+      const promise1 = result.current.schedule(callback1, 50, false);
+      const promise2 = result.current.schedule(callback2, 50, false);
+      const promise3 = result.current.schedule(callback3, 50, false);
       expect(promise1).toBe(promise2);
       expect(promise1).toBe(promise3);
-      expect(result.current.isEnqueued()).toBeTruthy();
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback1).toHaveBeenCalledTimes(0);
       expect(callback2).toHaveBeenCalledTimes(0);
       expect(callback3).toHaveBeenCalledTimes(0);
 
       await Promise.all([promise1, promise2, promise3]);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback1).toHaveBeenCalledTimes(0);
       expect(callback2).toHaveBeenCalledTimes(0);
       expect(callback3).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 
   it('enqueue repeatedly timing', async () => {
@@ -321,28 +424,35 @@ describe('useTimedAction | V2 (no skip)', () => {
     const callback2 = jest.fn();
     const callback3 = jest.fn();
     const callback4 = jest.fn();
-    const { result } = makeHook2('4e');
+    const { result } = makeHook2('T');
+    const oldSchedule = result.current.schedule;
+    const oldCancel = result.current.cancel;
+    const oldIsScheduled = result.current.isScheduled;
 
     await act(async () => {
-      result.current.enqueue({ callback: callback1, delay: 50, skipIfAlreadyEnqueued: false });
-      await waitFor(30);
-      result.current.enqueue({ callback: callback2, delay: 50, skipIfAlreadyEnqueued: false });
-      await waitFor(30);
-      result.current.enqueue({ callback: callback3, delay: 50, skipIfAlreadyEnqueued: false });
-      await waitFor(30);
-      result.current.enqueue({ callback: callback4, delay: 50, skipIfAlreadyEnqueued: false });
-      await waitFor(30);
-      expect(result.current.isEnqueued()).toBeTruthy();
+      result.current.schedule(callback1, 50, false);
+      await sleep(30);
+      result.current.schedule(callback2, 50, false);
+      await sleep(30);
+      result.current.schedule(callback3, 50, false);
+      await sleep(30);
+      result.current.schedule(callback4, 50, false);
+      await sleep(30);
+      expect(result.current.isScheduled()).toBeTruthy();
       expect(callback1).toHaveBeenCalledTimes(0);
       expect(callback2).toHaveBeenCalledTimes(0);
       expect(callback3).toHaveBeenCalledTimes(0);
       expect(callback4).toHaveBeenCalledTimes(0);
-      await waitFor(50);
-      expect(result.current.isEnqueued()).toBeFalsy();
+      await sleep(50);
+      expect(result.current.isScheduled()).toBeFalsy();
       expect(callback1).toHaveBeenCalledTimes(0);
       expect(callback2).toHaveBeenCalledTimes(0);
       expect(callback3).toHaveBeenCalledTimes(0);
       expect(callback4).toHaveBeenCalledTimes(1);
     });
+
+    expect(result.current.schedule).toBe(oldSchedule);
+    expect(result.current.cancel).toBe(oldCancel);
+    expect(result.current.isScheduled).toBe(oldIsScheduled);
   });
 });
